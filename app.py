@@ -11,7 +11,7 @@ import pandas as pd
 
 # Local/Project
 from smolagents import CodeAgent, DuckDuckGoSearchTool, InferenceClientModel, VisitWebpageTool, Tool
-from langchain.agents import load_tools
+from langchain_community.agent_toolkits.load_tools import load_tools
 
 # (Keep Constants as is)
 # --- Constants ---
