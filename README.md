@@ -1,5 +1,5 @@
 ---
-title: HF Agents Course: Final Project
+title: HF Agents Course Final Project
 sdk: gradio
 sdk_version: 5.25.2
 app_file: app.py
