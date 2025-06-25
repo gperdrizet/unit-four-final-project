@@ -13,7 +13,7 @@
 		  "streetsidesoftware.code-spell-checker"
 		]
 	  }
-	}
+	},
 
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
@@ -22,5 +22,5 @@
 	//"postCreateCommand": "",
 
 	// Use 'postAttachCommand' to run commands after the container is started.
-	//"postAttachCommand": ""
+	"postAttachCommand": "gradio app.py"
 }
