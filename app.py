@@ -1,32 +1,18 @@
-
-'''HuggingFace Agents course final project GAIA agent benchmark'''
+'''HuggingFace Agents course final project GAIA agent benchmark.'''
 
 # Standard library
 import os
+import requests
 
 # Third-party
 import gradio as gr
-import requests
 import pandas as pd
 
 # Local/Project
-from smolagents import CodeAgent, DuckDuckGoSearchTool, InferenceClientModel, VisitWebpageTool, Tool
-from langchain_community.agent_toolkits.load_tools import load_tools
+from functions.agent import create_agent
 
-# (Keep Constants as is)
 # --- Constants ---
-DEFAULT_API_URL = (
-    "https://agents-course-unit4-scoring.hf.space"
-)
-
-INSTRUCTIONS = (
-"""
-YOUR FINAL ANSWER should be a number OR as few words as possible OR a comma separated list of numbers and/or strings.\n"
-"If you are asked for a number, don't use comma to write your number neither use units such as $ or percent sign unless specified otherwise.\n"
-"If you are asked for a string, don't use articles, neither abbreviations (e.g. for cities), and write the digits in plain text unless specified otherwise.\n"
-"If you are asked for a comma separated list, apply the above rules depending of whether the element to be put in the list is a number or a string."
-"""
-)
+from configuration import DEFAULT_API_URL, INSTRUCTIONS
 
 
 def run_and_submit_all( profile: gr.OAuthProfile | None):
@@ -35,47 +21,33 @@ def run_and_submit_all( profile: gr.OAuthProfile | None):
     and displays the results.
     """
     # --- Determine HF Space Runtime URL and Repo URL ---
-    space_id = os.getenv("SPACE_ID") # Get the SPACE_ID for sending link to the code
+    space_id = os.getenv('SPACE_ID')
 
     if profile:
-        username= f"{profile.username}"
-        print(f"User logged in: {username}")
-
+        username = f'{profile.username}'
+        print(f'User logged in: {username}')
     else:
-        print("User not logged in.")
-        return "Please Login to Hugging Face with the button.", None
+        print('User not logged in.')
+        return 'Please Login to Hugging Face with the button.', None
 
     api_url = DEFAULT_API_URL
-    questions_url = f"{api_url}/questions"
-    submit_url = f"{api_url}/submit"
+    questions_url = f'{api_url}/questions'
+    submit_url = f'{api_url}/submit'
 
-    # 1. Instantiate Agent ( modify this part to create your agent)
+    # 1. Instantiate Agent (imported from agent.py)
     try:
-
-        wikipedia_tool = Tool.from_langchain(
-            load_tools(["wikipedia"])[0]
-        )
-        model = InferenceClientModel(
-            "Qwen/Qwen2.5-Coder-32B-Instruct"
-        )
-        agent = CodeAgent(
-            tools=[wikipedia_tool, DuckDuckGoSearchTool(), VisitWebpageTool()],
-            model=model
-        )
-
+        agent = create_agent()
     except Exception as e: # pylint: disable=W0703
         print(f"Error instantiating agent: {e}")
         return f"Error initializing agent: {e}", None
 
     # In the case of an app running as a hugging Face space, this link points toward your
     # codebase (useful for others so please keep it public)
-    agent_code = (
-        f"https://huggingface.co/spaces/{space_id}/tree/main"
-    )
+    agent_code = f'https://huggingface.co/spaces/{space_id}/tree/main'
     print(agent_code)
 
     # 2. Fetch Questions
-    print(f"Fetching questions from: {questions_url}")
+    print(f'Fetching questions from: {questions_url}')
 
     try:
         response = requests.get(questions_url, timeout=15)
@@ -83,36 +55,36 @@ def run_and_submit_all( profile: gr.OAuthProfile | None):
         questions_data = response.json()
 
         if not questions_data:
-            print("Fetched questions list is empty.")
-            return "Fetched questions list is empty or invalid format.", None
+            print('Fetched questions list is empty.')
+            return 'Fetched questions list is empty or invalid format.', None
 
-        print(f"Fetched {len(questions_data)} questions.")
+        print(f'Fetched {len(questions_data)} questions.')
 
     except requests.exceptions.JSONDecodeError as e:
-        print(f"Error decoding JSON response from questions endpoint: {e}")
-        print(f"Response text: {response.text[:500]}")
-        return f"Error decoding server response for questions: {e}", None
+        print(f'Error decoding JSON response from questions endpoint: {e}')
+        print(f'Response text: {response.text[:500]}')
+        return f'Error decoding server response for questions: {e}', None
 
     except requests.exceptions.RequestException as e:
-        print(f"Error fetching questions: {e}")
-        return f"Error fetching questions: {e}", None
+        print(f'Error fetching questions: {e}')
+        return f'Error fetching questions: {e}', None
 
     except Exception as e: # pylint: disable=W0703
-        print(f"An unexpected error occurred fetching questions: {e}")
-        return f"An unexpected error occurred fetching questions: {e}", None
+        print(f'An unexpected error occurred fetching questions: {e}')
+        return f'An unexpected error occurred fetching questions: {e}', None
 
     # 3. Run your Agent
     results_log = []
     answers_payload = []
 
-    print(f"Running agent on {len(questions_data)} questions...")
+    print(f'Running agent on {len(questions_data)} questions...')
 
     for item in questions_data:
         task_id = item.get("task_id")
         question_text = item.get("question")
 
         if not task_id or question_text is None:
-            print(f"Skipping item with missing task_id or question: {item}")
+            print(f'Skipping item with missing task_id or question: {item}')
             continue
 
         try:
@@ -129,7 +101,7 @@ def run_and_submit_all( profile: gr.OAuthProfile | None):
             })
 
         except Exception as e: # pylint: disable=W0703
-            print(f"Error running agent on task {task_id}: {e}")
+            print(f'Error running agent on task {task_id}: {e}')
             results_log.append({
                  "Task ID": task_id,
                  "Question": question_text,
@@ -137,8 +109,8 @@ def run_and_submit_all( profile: gr.OAuthProfile | None):
              })
 
     if not answers_payload:
-        print("Agent did not produce any answers to submit.")
-        return "Agent did not produce any answers to submit.", pd.DataFrame(results_log)
+        print('Agent did not produce any answers to submit.')
+        return 'Agent did not produce any answers to submit.', pd.DataFrame(results_log)
 
     # 4. Prepare Submission
     submission_data = {
@@ -147,12 +119,12 @@ def run_and_submit_all( profile: gr.OAuthProfile | None):
         "answers": answers_payload
     }
     status_update = (
-        f"Agent finished. Submitting {len(answers_payload)} answers for user '{username}'..."
+        f'Agent finished. Submitting {len(answers_payload)} answers for user "{username}"...'
     )
     print(status_update)
 
     # 5. Submit
-    print(f"Submitting {len(answers_payload)} answers to: {submit_url}")
+    print(f'Submitting {len(answers_payload)} answers to: {submit_url}')
     try:
         response = requests.post(submit_url, json=submission_data, timeout=60)
         response.raise_for_status()
@@ -165,7 +137,7 @@ def run_and_submit_all( profile: gr.OAuthProfile | None):
             f"{result_data.get('total_attempted', '?')} correct)\n"
             f"Message: {result_data.get('message', 'No message received.')}"
         )
-        print("Submission successful.")
+        print('Submission successful.')
         results_df = pd.DataFrame(results_log)
         return final_status, results_df
 
