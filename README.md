@@ -1,10 +1,10 @@
 ---
-title: HF Agents Course Final Project
+title: Unit Four - Final Project
 sdk: gradio
 sdk_version: 5.25.2
 app_file: app.py
-colorFrom: pink
-colorTo: yellow
+colorFrom: green
+colorTo: gray
 pinned: True
 hf_oauth: true
 # optional, default duration is 8 hours/480 minutes. Max duration is 30 days/43200 minutes.
