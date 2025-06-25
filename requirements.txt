@@ -1,2 +1,5 @@
+duckduckgo-search
 gradio[oauth]
+markdownify
 requests
+smolagents
