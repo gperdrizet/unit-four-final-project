@@ -1,22 +1,32 @@
+
 '''HuggingFace Agents course final project GAIA agent benchmark'''
 
+# Standard library
 import os
+
+# Third-party
 import gradio as gr
 import requests
 import pandas as pd
-from smolagents import (
-    CodeAgent,
-    DuckDuckGoSearchTool,
-    InferenceClientModel,
-    VisitWebpageTool
-)
+
+# Local/Project
+from smolagents import CodeAgent, DuckDuckGoSearchTool, InferenceClientModel, VisitWebpageTool, Tool
+from langchain.agents import load_tools
 
 # (Keep Constants as is)
 # --- Constants ---
-DEFAULT_API_URL = "https://agents-course-unit4-scoring.hf.space"
+DEFAULT_API_URL = (
+    "https://agents-course-unit4-scoring.hf.space"
+)
 
-INSTRUCTIONS = '''
-YOUR FINAL ANSWER should be a number OR as few words as possible OR a comma separated list of numbers and/or strings. If you are asked for a number, don't use comma to write your number neither use units such as $ or percent sign unless specified otherwise. If you are asked for a string, don't use articles, neither abbreviations (e.g. for cities), and write the digits in plain text unless specified otherwise. If you are asked for a comma separated list, apply the above rules depending of whether the element to be put in the list is a number or a string.'''
+INSTRUCTIONS = (
+"""
+YOUR FINAL ANSWER should be a number OR as few words as possible OR a comma separated list of numbers and/or strings.\n"
+"If you are asked for a number, don't use comma to write your number neither use units such as $ or percent sign unless specified otherwise.\n"
+"If you are asked for a string, don't use articles, neither abbreviations (e.g. for cities), and write the digits in plain text unless specified otherwise.\n"
+"If you are asked for a comma separated list, apply the above rules depending of whether the element to be put in the list is a number or a string."
+"""
+)
 
 
 def run_and_submit_all( profile: gr.OAuthProfile | None):
@@ -41,19 +51,27 @@ def run_and_submit_all( profile: gr.OAuthProfile | None):
 
     # 1. Instantiate Agent ( modify this part to create your agent)
     try:
-        model = InferenceClientModel("Qwen/Qwen2.5-Coder-32B-Instruct")
+
+        wikipedia_tool = Tool.from_langchain(
+            load_tools(["wikipedia"])[0]
+        )
+        model = InferenceClientModel(
+            "Qwen/Qwen2.5-Coder-32B-Instruct"
+        )
         agent = CodeAgent(
-            tools=[DuckDuckGoSearchTool(), VisitWebpageTool()],
+            tools=[wikipedia_tool, DuckDuckGoSearchTool(), VisitWebpageTool()],
             model=model
         )
 
-    except Exception as e: # pyline: disable=W0703
+    except Exception as e: # pylint: disable=W0703
         print(f"Error instantiating agent: {e}")
         return f"Error initializing agent: {e}", None
 
-    # In the case of an app running as a hugging Face space, this link points toward your 
-    # codebase ( useful for others so please keep it public)
-    agent_code = f"https://huggingface.co/spaces/{space_id}/tree/main"
+    # In the case of an app running as a hugging Face space, this link points toward your
+    # codebase (useful for others so please keep it public)
+    agent_code = (
+        f"https://huggingface.co/spaces/{space_id}/tree/main"
+    )
     print(agent_code)
 
     # 2. Fetch Questions
@@ -78,8 +96,8 @@ def run_and_submit_all( profile: gr.OAuthProfile | None):
     except requests.exceptions.RequestException as e:
         print(f"Error fetching questions: {e}")
         return f"Error fetching questions: {e}", None
-    
-    except Exception as e:
+
+    except Exception as e: # pylint: disable=W0703
         print(f"An unexpected error occurred fetching questions: {e}")
         return f"An unexpected error occurred fetching questions: {e}", None
 
@@ -110,9 +128,9 @@ def run_and_submit_all( profile: gr.OAuthProfile | None):
                 "Submitted Answer": submitted_answer
             })
 
-        except Exception as e:
-             print(f"Error running agent on task {task_id}: {e}")
-             results_log.append({
+        except Exception as e: # pylint: disable=W0703
+            print(f"Error running agent on task {task_id}: {e}")
+            results_log.append({
                  "Task ID": task_id,
                  "Question": question_text,
                  "Submitted Answer": f"AGENT ERROR: {e}"
@@ -122,9 +140,15 @@ def run_and_submit_all( profile: gr.OAuthProfile | None):
         print("Agent did not produce any answers to submit.")
         return "Agent did not produce any answers to submit.", pd.DataFrame(results_log)
 
-    # 4. Prepare Submission 
-    submission_data = {"username": username.strip(), "agent_code": agent_code, "answers": answers_payload}
-    status_update = f"Agent finished. Submitting {len(answers_payload)} answers for user '{username}'..."
+    # 4. Prepare Submission
+    submission_data = {
+        "username": username.strip(),
+        "agent_code": agent_code,
+        "answers": answers_payload
+    }
+    status_update = (
+        f"Agent finished. Submitting {len(answers_payload)} answers for user '{username}'..."
+    )
     print(status_update)
 
     # 5. Submit
@@ -137,13 +161,14 @@ def run_and_submit_all( profile: gr.OAuthProfile | None):
             f"Submission Successful!\n"
             f"User: {result_data.get('username')}\n"
             f"Overall Score: {result_data.get('score', 'N/A')}% "
-            f"({result_data.get('correct_count', '?')}/{result_data.get('total_attempted', '?')} correct)\n"
+            f"({result_data.get('correct_count', '?')}/"
+            f"{result_data.get('total_attempted', '?')} correct)\n"
             f"Message: {result_data.get('message', 'No message received.')}"
         )
         print("Submission successful.")
         results_df = pd.DataFrame(results_log)
         return final_status, results_df
-    
+
     except requests.exceptions.HTTPError as e:
         error_detail = f"Server responded with status {e.response.status_code}."
 
@@ -158,20 +183,20 @@ def run_and_submit_all( profile: gr.OAuthProfile | None):
         print(status_message)
         results_df = pd.DataFrame(results_log)
         return status_message, results_df
-    
+
     except requests.exceptions.Timeout:
         status_message = "Submission Failed: The request timed out."
         print(status_message)
         results_df = pd.DataFrame(results_log)
         return status_message, results_df
-    
+
     except requests.exceptions.RequestException as e:
         status_message = f"Submission Failed: Network error - {e}"
         print(status_message)
         results_df = pd.DataFrame(results_log)
         return status_message, results_df
-    
-    except Exception as e:
+
+    except Exception as e: # pylint: disable=W0703
         status_message = f"An unexpected error occurred during submission: {e}"
         print(status_message)
         results_df = pd.DataFrame(results_log)
@@ -185,14 +210,21 @@ with gr.Blocks() as demo:
         """
         **Instructions:**
 
-        1.  Please clone this space, then modify the code to define your agent's logic, the tools, the necessary packages, etc ...
-        2.  Log in to your Hugging Face account using the button below. This uses your HF username for submission.
-        3.  Click 'Run Evaluation & Submit All Answers' to fetch questions, run your agent, submit answers, and see the score.
+        1.  Please clone this space, then modify the code to define your agent's logic, 
+            the tools, the necessary packages, etc ...
+        2.  Log in to your Hugging Face account using the button below. This uses your 
+            HF username for submission.
+        3.  Click 'Run Evaluation & Submit All Answers' to fetch questions, run your 
+            agent, submit answers, and see the score.
 
         ---
         **Disclaimers:**
-        Once clicking on the "submit button, it can take quite some time ( this is the time for the agent to go through all the questions).
-        This space provides a basic setup and is intentionally sub-optimal to encourage you to develop your own, more robust solution. For instance for the delay process of the submit button, a solution could be to cache the answers and submit in a separate action or even to answer the questions in async.
+        Once clicking on the "submit" button, it can take quite some time (this is the 
+        time for the agent to go through all the questions).
+        This space provides a basic setup and is intentionally sub-optimal to encourage
+        you to develop your own, more robust solution. For instance, for the delay process
+        of the submit button, a solution could be to cache the answers and submit in a 
+        separate action or even to answer the questions in async.
         """
     )
 
@@ -211,6 +243,7 @@ with gr.Blocks() as demo:
 
 if __name__ == "__main__":
     print("\n" + "-"*30 + " App Starting " + "-"*30)
+
     # Check for SPACE_HOST and SPACE_ID at startup for information
     space_host_startup = os.getenv("SPACE_HOST")
     space_id_startup = os.getenv("SPACE_ID") # Get SPACE_ID at startup
@@ -226,7 +259,10 @@ if __name__ == "__main__":
         print(f"   Repo URL: https://huggingface.co/spaces/{space_id_startup}")
         print(f"   Repo Tree URL: https://huggingface.co/spaces/{space_id_startup}/tree/main")
     else:
-        print("ℹ️  SPACE_ID environment variable not found (running locally?). Repo URL cannot be determined.")
+        print(
+            "ℹ️  SPACE_ID environment variable not found (running locally?)." \
+            "Repo URL cannot be determined."
+        )
 
     print("-"*(60 + len(" App Starting ")) + "\n")
 
