@@ -1,24 +1,37 @@
 '''Agent definition for GAIA question answering system.'''
 
 # Imports for agent creation
-from smolagents import CodeAgent, InferenceClientModel, VisitWebpageTool, Tool
-from langchain_community.agent_toolkits.load_tools import load_tools
-from functions.tools import google_search
+from smolagents import CodeAgent, InferenceClientModel, VisitWebpageTool
+from functions.tools import (
+    google_search,
+    wikipedia_search,
+    get_wikipedia_page
+)
 
 def create_agent():
     '''Creates agent for GAIA question answering system.'''
 
-    wikipedia = Tool.from_langchain(
-        load_tools(["wikipedia"])[0]
+    model = InferenceClientModel(
+        # max_tokens=8096,
+        # temperature=0.5,
+        model_id='Qwen/Qwen2.5-Coder-32B-Instruct',
+        provider='together'
+        # custom_role_conversions=None
     )
 
-    model = InferenceClientModel(
-        "Qwen/Qwen2.5-Coder-32B-Instruct"
-    )
+    tools = [
+        google_search,
+        wikipedia_search,
+        get_wikipedia_page,
+        VisitWebpageTool()
+    ]
 
     agent = CodeAgent(
-        tools=[wikipedia, google_search, VisitWebpageTool()],
-        model=model
+        tools=tools,
+        model=model,
+        max_steps=20,
+        planning_interval=2,
+        additional_authorized_imports=['bs4.*']
     )
 
     return agent

@@ -1,7 +1,10 @@
+bleach
 duckduckgo-search
 googlesearch-python
 gradio[oauth]
-langchain-community
 markdownify
+mwparserfromhell
 requests
 smolagents
+tinycss2
+wikipedia-api

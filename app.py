@@ -12,10 +12,10 @@ import pandas as pd
 from functions.agent import create_agent
 
 # --- Constants ---
-from configuration import DEFAULT_API_URL, INSTRUCTIONS
+from configuration import QUESTIONS, DEFAULT_API_URL, INSTRUCTIONS
 
 
-def run_and_submit_all( profile: gr.OAuthProfile | None):
+def run_and_submit_all(profile: gr.OAuthProfile | None):
     """
     Fetches all questions, runs the BasicAgent on them, submits all answers,
     and displays the results.
@@ -79,7 +79,8 @@ def run_and_submit_all( profile: gr.OAuthProfile | None):
 
     print(f'Running agent on {len(questions_data)} questions...')
 
-    for item in questions_data:
+    for question_number in QUESTIONS:
+        item = questions_data[question_number - 1]  # Adjust for zero-based index
         task_id = item.get("task_id")
         question_text = item.get("question")
 
@@ -89,8 +90,7 @@ def run_and_submit_all( profile: gr.OAuthProfile | None):
 
         try:
             submitted_answer = agent.run(
-                INSTRUCTIONS,
-                additional_args={'user_prompt': question_text}
+                question_text
             )
 
             answers_payload.append({"task_id": task_id, "submitted_answer": submitted_answer})
