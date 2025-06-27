@@ -94,7 +94,7 @@ def run_and_submit_all(profile: gr.OAuthProfile | None):
 
         try:
             submitted_answer = agent.run(
-                question_text
+                INSTRUCTIONS + '\n' + question_text
             )
 
             answers_payload.append({"task_id": task_id, "submitted_answer": submitted_answer})
@@ -209,7 +209,6 @@ with gr.Blocks() as demo:
     run_button = gr.Button("Run Evaluation & Submit All Answers")
 
     status_output = gr.Textbox(label="Run Status / Submission Result", lines=5, interactive=False)
-    # Removed max_rows=10 from DataFrame constructor
     results_table = gr.DataFrame(label="Questions and Agent Answers", wrap=True)
 
     run_button.click( # pylint: disable=E1101
