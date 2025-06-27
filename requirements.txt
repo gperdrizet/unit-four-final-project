@@ -5,6 +5,6 @@ gradio[oauth]
 markdownify
 mwparserfromhell
 requests
-smolagents==1.13.0
+smolagents==1.18.0
 tinycss2
 wikipedia-api

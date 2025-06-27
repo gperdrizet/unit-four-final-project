@@ -72,7 +72,7 @@ def run_and_submit_all(profile: gr.OAuthProfile | None):
     except Exception as e: # pylint: disable=W0703
         print(f'An unexpected error occurred fetching questions: {e}')
         return f'An unexpected error occurred fetching questions: {e}', None
-    
+
     with open('questions.json', 'w', encoding='utf-8') as f:
         # Save the fetched questions to a file for debugging purposes
         pd.DataFrame(questions_data).to_json(f, orient='records', lines=True, force_ascii=False)
