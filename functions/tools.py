@@ -1,11 +1,16 @@
 '''Tools for GAIA question answering agent.'''
 
+import logging
 import bleach
 import requests
 from bleach.css_sanitizer import CSSSanitizer
-from bs4 import BeautifulSoup
 from smolagents import tool
 from googlesearch import search
+from bs4 import BeautifulSoup
+
+# Get logger for this module
+logger = logging.getLogger(__name__)
+
 
 @tool
 def google_search(query: str) -> dict:
@@ -82,7 +87,8 @@ def wikipedia_search(query: str) -> dict:
 @tool
 def get_wikipedia_page(query: str) -> str:
     """
-    Get the content of a Wikipedia page as HTML.
+    Get the content of a Wikipedia page as HTML. Use this tool when trying to
+    retrieve information from a Wikipedia page or article.
 
     Args:
         query (str): The title of the Wikipedia page.

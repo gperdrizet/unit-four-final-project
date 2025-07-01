@@ -1,6 +1,8 @@
 '''HuggingFace Agents course final project GAIA agent benchmark.'''
 
 # Standard library
+import glob
+import logging
 import os
 import requests
 
@@ -14,6 +16,37 @@ from functions.agent import create_agent
 # --- Constants ---
 from configuration import QUESTIONS, DEFAULT_API_URL, INSTRUCTIONS
 
+# --- Logging Configuration ---
+# Create logs directory if it doesn't exist
+os.makedirs('logs', exist_ok=True)
+
+# Clean up old log files
+def cleanup_old_logs():
+    """Remove old log files from the logs directory."""
+    log_files = glob.glob('logs/*.log')
+    for log_file in log_files:
+        try:
+            os.remove(log_file)
+            print(f"Removed old log file: {log_file}")
+        except OSError as e:
+            print(f"Error removing log file {log_file}: {e}")
+
+# Clean up old logs before starting
+cleanup_old_logs()
+
+# Configure root logger
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('logs/agent.log', encoding='utf-8'),
+        logging.StreamHandler()  # Also log to console
+    ]
+)
+
+# Get logger for this module
+logger = logging.getLogger(__name__)
+
 
 def run_and_submit_all(profile: gr.OAuthProfile | None):
     """
@@ -25,9 +58,9 @@ def run_and_submit_all(profile: gr.OAuthProfile | None):
 
     if profile:
         username = f'{profile.username}'
-        print(f'User logged in: {username}')
+        logger.info('User logged in: %s', username)
     else:
-        print('User not logged in.')
+        logger.warning('User not logged in.')
         return 'Please Login to Hugging Face with the button.', None
 
     api_url = DEFAULT_API_URL
@@ -38,16 +71,16 @@ def run_and_submit_all(profile: gr.OAuthProfile | None):
     try:
         agent = create_agent()
     except Exception as e: # pylint: disable=W0703
-        print(f"Error instantiating agent: {e}")
+        logger.error("Error instantiating agent: %s", e)
         return f"Error initializing agent: {e}", None
 
     # In the case of an app running as a hugging Face space, this link points toward your
     # codebase (useful for others so please keep it public)
     agent_code = f'https://huggingface.co/spaces/{space_id}/tree/main'
-    print(agent_code)
+    logger.info('Agent code URL: %s', agent_code)
 
     # 2. Fetch Questions
-    print(f'Fetching questions from: {questions_url}')
+    logger.info('Fetching questions from: %s', questions_url)
 
     try:
         response = requests.get(questions_url, timeout=15)
@@ -55,22 +88,22 @@ def run_and_submit_all(profile: gr.OAuthProfile | None):
         questions_data = response.json()
 
         if not questions_data:
-            print('Fetched questions list is empty.')
+            logger.warning('Fetched questions list is empty.')
             return 'Fetched questions list is empty or invalid format.', None
 
-        print(f'Fetched {len(questions_data)} questions.')
+        logger.info('Fetched %d questions.', len(questions_data))
 
     except requests.exceptions.JSONDecodeError as e:
-        print(f'Error decoding JSON response from questions endpoint: {e}')
-        print(f'Response text: {response.text[:500]}')
+        logger.error('Error decoding JSON response from questions endpoint: %s', e)
+        logger.debug('Response text: %s', response.text[:500])
         return f'Error decoding server response for questions: {e}', None
 
     except requests.exceptions.RequestException as e:
-        print(f'Error fetching questions: {e}')
+        logger.error('Error fetching questions: %s', e)
         return f'Error fetching questions: {e}', None
 
     except Exception as e: # pylint: disable=W0703
-        print(f'An unexpected error occurred fetching questions: {e}')
+        logger.error('An unexpected error occurred fetching questions: %s', e)
         return f'An unexpected error occurred fetching questions: {e}', None
 
     with open('questions.json', 'w', encoding='utf-8') as f:
@@ -81,7 +114,7 @@ def run_and_submit_all(profile: gr.OAuthProfile | None):
     results_log = []
     answers_payload = []
 
-    print(f'Running agent on {len(questions_data)} questions...')
+    logger.info('Running agent on %d questions...', len(questions_data))
 
     for question_number in QUESTIONS:
         item = questions_data[question_number - 1]  # Adjust for zero-based index
@@ -89,7 +122,7 @@ def run_and_submit_all(profile: gr.OAuthProfile | None):
         question_text = item.get("question")
 
         if not task_id or question_text is None:
-            print(f'Skipping item with missing task_id or question: {item}')
+            logger.warning('Skipping item with missing task_id or question: %s', item)
             continue
 
         try:
@@ -105,7 +138,7 @@ def run_and_submit_all(profile: gr.OAuthProfile | None):
             })
 
         except Exception as e: # pylint: disable=W0703
-            print(f'Error running agent on task {task_id}: {e}')
+            logger.error('Error running agent on task %s: %s', task_id, e)
             results_log.append({
                  "Task ID": task_id,
                  "Question": question_text,
@@ -113,7 +146,7 @@ def run_and_submit_all(profile: gr.OAuthProfile | None):
              })
 
     if not answers_payload:
-        print('Agent did not produce any answers to submit.')
+        logger.warning('Agent did not produce any answers to submit.')
         return 'Agent did not produce any answers to submit.', pd.DataFrame(results_log)
 
     # 4. Prepare Submission
@@ -125,10 +158,10 @@ def run_and_submit_all(profile: gr.OAuthProfile | None):
     status_update = (
         f'Agent finished. Submitting {len(answers_payload)} answers for user "{username}"...'
     )
-    print(status_update)
+    logger.info(status_update)
 
     # 5. Submit
-    print(f'Submitting {len(answers_payload)} answers to: {submit_url}')
+    logger.info('Submitting %d answers to: %s', len(answers_payload), submit_url)
     try:
         response = requests.post(submit_url, json=submission_data, timeout=60)
         response.raise_for_status()
@@ -141,8 +174,9 @@ def run_and_submit_all(profile: gr.OAuthProfile | None):
             f"{result_data.get('total_attempted', '?')} correct)\n"
             f"Message: {result_data.get('message', 'No message received.')}"
         )
-        print('Submission successful.')
+        logger.info('Submission successful.')
         results_df = pd.DataFrame(results_log)
+        results_df.to_csv('results.csv', index=False)
         return final_status, results_df
 
     except requests.exceptions.HTTPError as e:
@@ -156,26 +190,30 @@ def run_and_submit_all(profile: gr.OAuthProfile | None):
             error_detail += f" Response: {e.response.text[:500]}"
 
         status_message = f"Submission Failed: {error_detail}"
-        print(status_message)
+        logger.error(status_message)
         results_df = pd.DataFrame(results_log)
+        results_df.to_csv('results.csv', index=False)
         return status_message, results_df
 
     except requests.exceptions.Timeout:
         status_message = "Submission Failed: The request timed out."
-        print(status_message)
+        logger.error(status_message)
         results_df = pd.DataFrame(results_log)
+        results_df.to_csv('results.csv', index=False)
         return status_message, results_df
 
     except requests.exceptions.RequestException as e:
         status_message = f"Submission Failed: Network error - {e}"
-        print(status_message)
+        logger.error(status_message)
         results_df = pd.DataFrame(results_log)
+        results_df.to_csv('results.csv', index=False)
         return status_message, results_df
 
     except Exception as e: # pylint: disable=W0703
         status_message = f"An unexpected error occurred during submission: {e}"
-        print(status_message)
+        logger.error(status_message)
         results_df = pd.DataFrame(results_log)
+        results_df.to_csv('results.csv', index=False)
         return status_message, results_df
 
 
@@ -217,29 +255,29 @@ with gr.Blocks() as demo:
     )
 
 if __name__ == "__main__":
-    print("\n" + "-"*30 + " App Starting " + "-"*30)
+    logger.info("\n" + "-"*30 + " App Starting " + "-"*30)
 
     # Check for SPACE_HOST and SPACE_ID at startup for information
     space_host_startup = os.getenv("SPACE_HOST")
     space_id_startup = os.getenv("SPACE_ID") # Get SPACE_ID at startup
 
     if space_host_startup:
-        print(f"✅ SPACE_HOST found: {space_host_startup}")
-        print(f"   Runtime URL should be: https://{space_host_startup}.hf.space")
+        logger.info("✅ SPACE_HOST found: %s", space_host_startup)
+        logger.info("   Runtime URL should be: https://%s.hf.space", space_host_startup)
     else:
-        print("ℹ️  SPACE_HOST environment variable not found (running locally?).")
+        logger.info("ℹ️  SPACE_HOST environment variable not found (running locally?).")
 
     if space_id_startup: # Print repo URLs if SPACE_ID is found
-        print(f"✅ SPACE_ID found: {space_id_startup}")
-        print(f"   Repo URL: https://huggingface.co/spaces/{space_id_startup}")
-        print(f"   Repo Tree URL: https://huggingface.co/spaces/{space_id_startup}/tree/main")
+        logger.info("✅ SPACE_ID found: %s", space_id_startup)
+        logger.info("   Repo URL: https://huggingface.co/spaces/%s", space_id_startup)
+        logger.info("   Repo Tree URL: https://huggingface.co/spaces/%s/tree/main", space_id_startup)
     else:
-        print(
-            "ℹ️  SPACE_ID environment variable not found (running locally?)." \
+        logger.info(
+            "ℹ️  SPACE_ID environment variable not found (running locally?). " \
             "Repo URL cannot be determined."
         )
 
-    print("-"*(60 + len(" App Starting ")) + "\n")
+    logger.info("-" + "-"*(60 + len(" App Starting ")) + "\n")
 
-    print("Launching Gradio Interface for Basic Agent Evaluation...")
+    logger.info("Launching Gradio Interface for Basic Agent Evaluation...")
     demo.launch(debug=True, share=False)
