@@ -5,7 +5,9 @@ from functions.tools import (
     google_search,
     wikipedia_search,
     get_wikipedia_page,
-    libretext_book_search
+    libretext_book_search,
+    libretext_book_parser,
+    libretext_chapter_parser
 )
 
 
@@ -137,7 +139,122 @@ class TestLibretextBookSearch(unittest.TestCase):
             for result in self.search_results.values():
                 if result['url']:  # Only test non-empty URLs
                     self.assertTrue(
-                        result['url'].startswith('http://') or
+                        result['url'].startswith('http://') or 
                         result['url'].startswith('https://') or
                         result['url'].startswith('/')
                     )
+
+
+class TestLibretextBookParser(unittest.TestCase):
+    '''Tests for the libretext_book_parser tool.'''
+
+    def setUp(self):
+        # Use a known LibreTexts book URL for testing
+        book_url = 'https://chem.libretexts.org/Bookshelves/Introductory_Chemistry/Introductory_Chemistry_(CK-12)'
+        self.parse_results = libretext_book_parser(book_url)
+
+    def test_result_type(self):
+        '''Parse results should be a dictionary.'''
+        self.assertIsInstance(self.parse_results, dict)
+
+    def test_no_error(self):
+        '''Parse results should not contain an error.'''
+        self.assertNotIn('error', self.parse_results)
+
+    def test_result_content(self):
+        '''Each chapter should contain title, url, and description if chapters found.'''
+        if len(self.parse_results) > 0 and 'error' not in self.parse_results:
+            for chapter in self.parse_results.values():
+                self.assertIsInstance(chapter, dict)
+                self.assertIn('title', chapter)
+                self.assertIn('url', chapter)
+                self.assertIn('description', chapter)
+                self.assertIsInstance(chapter['title'], str)
+                self.assertIsInstance(chapter['url'], str)
+                self.assertIsInstance(chapter['description'], str)
+
+    def test_chapters_found(self):
+        '''Should find multiple chapters in a typical LibreTexts book.'''
+        if 'error' not in self.parse_results:
+            self.assertGreater(len(self.parse_results), 5)  # Expect at least several chapters
+
+    def test_chapter_titles_meaningful(self):
+        '''Chapter titles should be meaningful (not empty or too short).'''
+        if len(self.parse_results) > 0 and 'error' not in self.parse_results:
+            for chapter in self.parse_results.values():
+                self.assertTrue(len(chapter['title']) > 2)
+
+    def test_chapter_urls_valid(self):
+        '''Chapter URLs should be properly formatted.'''
+        if len(self.parse_results) > 0 and 'error' not in self.parse_results:
+            for chapter in self.parse_results.values():
+                if chapter['url']:  # Only test non-empty URLs
+                    self.assertTrue(
+                        chapter['url'].startswith('http://') or 
+                        chapter['url'].startswith('https://') or
+                        chapter['url'].startswith('/')
+                    )
+
+
+class TestLibretextChapterParser(unittest.TestCase):
+    '''Tests for the libretext_chapter_parser tool.'''
+
+    def setUp(self):
+        # Use a known LibreTexts chapter URL for testing
+        chapter_url = 'https://chem.libretexts.org/Bookshelves/Introductory_Chemistry/Introductory_Chemistry_(CK-12)/01%3A_Introduction_to_Chemistry'
+        self.parse_results = libretext_chapter_parser(chapter_url)
+
+    def test_result_type(self):
+        '''Parse results should be a dictionary.'''
+        self.assertIsInstance(self.parse_results, dict)
+
+    def test_no_error(self):
+        '''Parse results should not contain an error.'''
+        self.assertNotIn('error', self.parse_results)
+
+    def test_result_content(self):
+        '''Each section should contain title, url, and description if sections found.'''
+        if len(self.parse_results) > 0 and 'error' not in self.parse_results:
+            for section in self.parse_results.values():
+                self.assertIsInstance(section, dict)
+                self.assertIn('title', section)
+                self.assertIn('url', section)
+                self.assertIn('description', section)
+                self.assertIsInstance(section['title'], str)
+                self.assertIsInstance(section['url'], str)
+                self.assertIsInstance(section['description'], str)
+
+    def test_sections_found(self):
+        '''Should find multiple sections in a typical LibreTexts chapter.'''
+        if 'error' not in self.parse_results:
+            self.assertGreater(len(self.parse_results), 2)  # Expect at least a few sections
+
+    def test_section_titles_meaningful(self):
+        '''Section titles should be meaningful (not empty or too short).'''
+        if len(self.parse_results) > 0 and 'error' not in self.parse_results:
+            for section in self.parse_results.values():
+                self.assertTrue(len(section['title']) > 2)
+
+    def test_section_urls_valid(self):
+        '''Section URLs should be properly formatted.'''
+        if len(self.parse_results) > 0 and 'error' not in self.parse_results:
+            for section in self.parse_results.values():
+                if section['url']:  # Only test non-empty URLs
+                    self.assertTrue(
+                        section['url'].startswith('http://') or 
+                        section['url'].startswith('https://') or
+                        section['url'].startswith('/')
+                    )
+
+    def test_sections_have_descriptions(self):
+        '''Most sections should have meaningful descriptions.'''
+        if len(self.parse_results) > 0 and 'error' not in self.parse_results:
+            sections_with_descriptions = sum(
+                1 for section in self.parse_results.values() 
+                if section['description'] and len(section['description']) > 10
+            )
+            # At least half the sections should have descriptions
+            self.assertGreater(sections_with_descriptions, len(self.parse_results) // 2)
+
+if __name__ == '__main__':
+    unittest.main()

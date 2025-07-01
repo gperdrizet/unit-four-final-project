@@ -271,9 +271,8 @@ if __name__ == "__main__":
         logger.info("   Repo URL: https://huggingface.co/spaces/%s", space_id_startup)
         logger.info(
             "   Repo Tree URL: https://huggingface.co/spaces/%s/tree/main",
-              space_id_startup
+            space_id_startup
         )
-
     else:
         logger.info(
             "ℹ️  SPACE_ID environment variable not found (running locally?). " \

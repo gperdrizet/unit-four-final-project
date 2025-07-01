@@ -82,10 +82,7 @@ def step_memory_cap(memory_step: ActionStep, agent: CodeAgent) -> None:
             new_messages = [agent.memory.steps[-1].model_input_messages[0]]
             new_messages.append({
                 'role': MessageRole.USER,
-                'content': [{
-                    'type': 'text', 
-                    'text': f'Here is a summary of your investigation so far: {summary}'
-                }]
+                'content': [{'type': 'text', 'text': f'Here is a summary of your investigation so far: {summary}'}]
             })
             agent.memory.steps = [agent.memory.steps[0]]
             agent.memory.steps[0].model_input_messages = new_messages
@@ -110,8 +107,7 @@ def summarize_old_messages(messages: dict) -> dict:
     messages = [
         {
             'role': 'system',
-            'content': ('Summarize the following interaction between an AI agent and a user. ' +
-                f'Return the summary formatted as text, not as JSON: {json.dumps(messages)}')
+            'content': f'Summarize the following interaction between an AI agent and a user. Return the summary formatted as text, not as JSON: {json.dumps(messages)}'
         }
     ]
 
