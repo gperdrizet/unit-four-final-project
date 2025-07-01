@@ -255,7 +255,6 @@ with gr.Blocks() as demo:
     )
 
 if __name__ == "__main__":
-    logger.info("\n" + "-"*30 + " App Starting " + "-"*30)
 
     # Check for SPACE_HOST and SPACE_ID at startup for information
     space_host_startup = os.getenv("SPACE_HOST")
@@ -270,14 +269,16 @@ if __name__ == "__main__":
     if space_id_startup: # Print repo URLs if SPACE_ID is found
         logger.info("✅ SPACE_ID found: %s", space_id_startup)
         logger.info("   Repo URL: https://huggingface.co/spaces/%s", space_id_startup)
-        logger.info("   Repo Tree URL: https://huggingface.co/spaces/%s/tree/main", space_id_startup)
+        logger.info(
+            "   Repo Tree URL: https://huggingface.co/spaces/%s/tree/main",
+              space_id_startup
+        )
+
     else:
         logger.info(
             "ℹ️  SPACE_ID environment variable not found (running locally?). " \
             "Repo URL cannot be determined."
         )
-
-    logger.info("-" + "-"*(60 + len(" App Starting ")) + "\n")
 
     logger.info("Launching Gradio Interface for Basic Agent Evaluation...")
     demo.launch(debug=True, share=False)

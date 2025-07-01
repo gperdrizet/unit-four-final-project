@@ -5,6 +5,7 @@ gradio[oauth]
 markdownify
 mwparserfromhell
 requests
+selenium
 smolagents==1.18.0
 tinycss2
 wikipedia-api
