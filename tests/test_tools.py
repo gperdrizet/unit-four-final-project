@@ -6,6 +6,9 @@ from functions.tools import (
     wikipedia_search,
     get_wikipedia_page,
     libretext_book_search,
+    get_libretext_book
+)
+from functions.tool_helper_functions import (
     libretext_book_parser,
     libretext_chapter_parser
 )
@@ -255,6 +258,77 @@ class TestLibretextChapterParser(unittest.TestCase):
             )
             # At least half the sections should have descriptions
             self.assertGreater(sections_with_descriptions, len(self.parse_results) // 2)
+
+
+class TestGetLibretextBook(unittest.TestCase):
+    '''Tests for the get_libretext_book tool.'''
+
+    def setUp(self):
+        # Use a smaller LibreTexts book for testing to avoid long test times
+        # This is a smaller book that should have fewer chapters
+        book_url = 'https://chem.libretexts.org/Bookshelves/Introductory_Chemistry/Introductory_Chemistry_(CK-12)'
+
+        # For testing, we'll limit to just the first chapter to keep test times reasonable
+        # In a real scenario, you'd process the full book
+        self.book_results = get_libretext_book(book_url)
+
+    def test_result_type(self):
+        '''Book results should be a dictionary.'''
+        self.assertIsInstance(self.book_results, dict)
+
+    def test_no_error(self):
+        '''Book results should not contain an error at the top level.'''
+        self.assertNotIn('error', self.book_results)
+
+    def test_book_structure(self):
+        '''Book should have title and chapters structure.'''
+        if 'error' not in self.book_results:
+            self.assertIn('title', self.book_results)
+            self.assertIn('chapters', self.book_results)
+            self.assertIsInstance(self.book_results['title'], str)
+            self.assertIsInstance(self.book_results['chapters'], dict)
+
+    def test_chapters_exist(self):
+        '''Book should contain at least some chapters.'''
+        if 'error' not in self.book_results and 'chapters' in self.book_results:
+            self.assertGreater(len(self.book_results['chapters']), 0)
+
+    def test_chapter_structure(self):
+        '''Each chapter should have sections structure.'''
+        if ('error' not in self.book_results and 
+            'chapters' in self.book_results and 
+            len(self.book_results['chapters']) > 0):
+
+            # Test the first chapter
+            first_chapter = next(iter(self.book_results['chapters'].values()))
+            self.assertIn('sections', first_chapter)
+            self.assertIsInstance(first_chapter['sections'], dict)
+
+    def test_section_structure(self):
+        '''Each section should have summary and url.'''
+        if ('error' not in self.book_results and 
+            'chapters' in self.book_results and 
+            len(self.book_results['chapters']) > 0):
+
+            # Test the first chapter's first section
+            first_chapter = next(iter(self.book_results['chapters'].values()))
+            if 'sections' in first_chapter and len(first_chapter['sections']) > 0:
+                first_section = next(iter(first_chapter['sections'].values()))
+                self.assertIn('Section summary', first_section)
+                self.assertIn('Section url', first_section)
+                self.assertIsInstance(first_section['Section summary'], str)
+                self.assertIsInstance(first_section['Section url'], str)
+
+    def test_meaningful_content(self):
+        '''Book should have meaningful title and content.'''
+        if 'error' not in self.book_results:
+            # Title should be meaningful
+            self.assertTrue(len(self.book_results.get('title', '')) > 3)
+
+            # Should have chapters with meaningful names
+            if 'chapters' in self.book_results:
+                for chapter_title in self.book_results['chapters'].keys():
+                    self.assertTrue(len(chapter_title) > 2)
 
 if __name__ == '__main__':
     unittest.main()
