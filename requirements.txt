@@ -4,6 +4,7 @@ googlesearch-python
 gradio[oauth]
 markdownify
 mwparserfromhell
+openai
 requests
 selenium
 smolagents==1.18.0
